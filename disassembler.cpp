@@ -12,6 +12,18 @@
 #include <fstream>
 #include <vector>
 
+//function declarations
+void readFile();
+std::string hexToBin();
+std::string getOpcode();
+void getInstructionType();
+void dissassembleRType();
+void dissassembleIType1();
+void dissassembleIType2();
+void dissassembleIType3();
+void dissassembleSType();
+
+
 // global variables
 //  get number of lines in the file
 int numLines = 0;
@@ -26,6 +38,8 @@ int main()
     hexToBin();
     getOpcode();
     getInstructionType();
+
+
     return 0;
 }
 // go through .obj file and parse line by line to put values in an array of strings
@@ -143,47 +157,47 @@ void getInstructionType()
     std::string opcode = getOpcode();
     if (opcode == "0110011")
     {
-        dissassembleRType();
+        disassembleRType();
         type = "R";
     }
     else if (opcode == "0010011")
     {
-        dissassembleIType1();
+        disassembleIType1();
         type = "I";
     }
     else if (opcode == "0000011")
     {
-        dissassembleIType2();
+        disassembleIType2();
         type = "I";
     }
     else if (opcode == "0100011")
     {
-        dissassembleSType();
+        disassembleSType();
         type = "S";
     }
     else if (opcode == "1100011")
     {
-        //dissassembleBType();
+        disassembleBType();
         type = "B";
     }
     else if (opcode == "1101111")
     {
-        //dissassembleJType();
+        disassembleJType();
         type = "J";
     }
     else if (opcode == "1100111")
     {
-        dissassembleIType3();
+        disassembleIType3();
         type = "I";
     }
     else if (opcode == "0110111")
     {
-        //dissassembleUType1(); // lui
+        disassembleUType1(); // lui
         type = "U";
     }
     else if (opcode == "0010111")
     {
-        //dissassembleUType2(); // auipc
+        disassembleUType2(); // auipc
         type = "U";
     }
     else
@@ -333,7 +347,7 @@ std::string convertRegNameToABI(std::string regName)
         return "Invalid register";
 }
 
-void dissassembleRType()
+void disassembleRType()
 {
     std::string output = "";
     std::string binNum = hexToBin();
@@ -401,7 +415,7 @@ void dissassembleRType()
     std::cout << output;
 }
 
-void dissassembleIType1()
+void disassembleIType1()
 {
     std::string output = "";
     std::string binNum = hexToBin();
@@ -470,7 +484,7 @@ void dissassembleIType1()
     output += " # I";
     std::cout << output;
 }
-void dissassembleIType2()
+void disassembleIType2()
 {
     std::string output = "";
     std::string binNum = hexToBin();
@@ -517,7 +531,7 @@ void dissassembleIType2()
     output += " # I";
     std::cout << output;
 }
-void dissassembleIType3()
+void disassembleIType3()
 {
     std::string output = "";
     std::string binNum = hexToBin();
@@ -545,7 +559,7 @@ void dissassembleIType3()
     std::cout << output;
 }
 
-void dissassembleSType()
+void disassembleSType()
 {
     std::string output = "";
     std::string binNum = hexToBin();
@@ -580,5 +594,112 @@ void dissassembleSType()
         return; // end function if invalid instruction
     }
     output += " # S";
+    std::cout << output;
+}
+
+void disassembleBType()
+{
+    std::string output = "";
+    std::string binNum = hexToBin();
+    //immediate = bits 0, 24, 1-6, 20-23
+    std::string immediateBinBits = binNum.substr(0, 1) + binNum.substr(24, 1) + binNum.substr(1, 6) + binNum.substr(20, 4) + "0";
+    int immediate = std::stoi(immediateBinBits, nullptr, 2); // immediate in decimal form
+    if (immediateBinBits[0] == '1')                          // check if negative
+    {
+        immediate -= 8192; // if negative subtract 2^13 = 8192 (13 bc immediate is 13 bits for b type)
+    }
+    std::string immediateStr = std::to_string(immediate); // convert immediate to string
+    std::string rs2 = convertRegNameToABI(convertBinToRegName(binNum.substr(7, 5)));
+    std::string rs1 = convertRegNameToABI(convertBinToRegName(binNum.substr(12, 5)));
+    std::string funct3 = binNum.substr(17, 3);
+    //beq
+    if (funct3 == "000")
+    {
+        output += "beq" + std::string(" ") + rs1 + std::string(", ") + rs2 + std::string(", ") + immediateStr;
+    }
+    //bne
+    else if (funct3 == "001")
+    {
+        output += "bne" + std::string(" ") + rs1 + std::string(", ") + rs2 + std::string(", ") + immediateStr;
+    }
+    //blt
+    else if (funct3 == "100")
+    {
+        output += "blt" + std::string(" ") + rs1 + std::string(", ") + rs2 + std::string(", ") + immediateStr;
+    }
+    //bge
+    else if (funct3 == "101")
+    {
+        output += "bge" + std::string(" ") + rs1 + std::string(", ") + rs2 + std::string(", ") + immediateStr;
+    }
+    //bltu
+    else if (funct3 == "110")
+    {
+        output += "bltu" + std::string(" ") + rs1 + std::string(", ") + rs2 + std::string(", ") + immediateStr;
+    }
+    //bgeu
+    else if (funct3 == "111")
+    {
+        output += "bgeu" + std::string(" ") + rs1 + std::string(", ") + rs2 + std::string(", ") + immediateStr;
+    }
+    else
+    {
+        std::cout << "Invalid instruction";
+        return; // end function if invalid instruction
+    }
+    output += " # B";
+    std::cout << output;
+}
+void disassembleJType()
+{
+    std::string output = "";
+    std::string binNum = hexToBin();
+    std::string rd = convertRegNameToABI(convertBinToRegName(binNum.substr(20, 5)));
+    ////immediate = bits 0, 12-19, 11, 1-10 
+    std::string immediateBinBits = binNum.substr(0, 1) + binNum.substr(12, 8) + binNum.substr(11, 1) + binNum.substr(1, 10) + "0";
+    int immediate = std::stoi(immediateBinBits, nullptr, 2); // immediate in decimal form
+    if (immediateBinBits[0] == '1')                          // check if negative
+    {
+        immediate -= 2097152; // if negative subtract 2^21 = 2097152 (21 bc immediate is 21 bits for j type)
+    }
+    std::string immediateStr = std::to_string(immediate);
+    //jal
+    output += "jal" + std::string(" ") + rd + std::string(", ") + immediateStr;
+    output += " # J";
+    std::cout << output;
+
+}
+void disassembleUType1()
+{
+    std::string output = "";
+    std::string binNum = hexToBin();
+    std::string rd = convertRegNameToABI(convertBinToRegName(binNum.substr(20, 5)));
+    std::string immediateBinBits = binNum.substr(0, 20) + "000000000000";
+    int immediate = std::stoi(immediateBinBits, nullptr, 2); // immediate in decimal form
+    if (immediateBinBits[0] == '1')                          // check if negative
+    {
+        immediate -= 2097152; // if negative subtract 2^21 = 2097152 (21 bc immediate is 21 bits for u type)
+    }
+    std::string immediateStr = std::to_string(immediate);
+    //lui
+    output += "lui" + std::string(" ") + rd + std::string(", ") + immediateStr;
+    output += " # U";
+    std::cout << output;
+}
+void disassembleUType2()
+{
+    std::string output = "";
+    std::string binNum = hexToBin();
+    std::string rd = convertRegNameToABI(convertBinToRegName(binNum.substr(20, 5)));
+    std::string immediateBinBits = binNum.substr(0, 20) + "000000000000";
+    int immediate = std::stoi(immediateBinBits, nullptr, 2); // immediate in decimal form
+    if (immediateBinBits[0] == '1')                          // check if negative
+    {
+        immediate -= 2097152; // if negative subtract 2^21 = 2097152 (21 bc immediate is 21 bits for u type)
+    }
+    std::string immediateStr = std::to_string(immediate);
+    //auipc
+    output += "auipc" + std::string(" ") + rd + std::string(", ") + immediateStr;
+    output += " # U";
     std::cout << output;
 }
